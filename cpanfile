@@ -1,0 +1,9 @@
+requires 'LWP::Protocol';
+requires 'LWP::Protocol::https';
+requires 'JSON';
+requires 'IO::Prompt::Simple';
+requires 'Getopt::Long';
+requires 'List::Util';
+requires 'DateTime';
+requires 'Template';
+requires 'ExtUtils::Installed';

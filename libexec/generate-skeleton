@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Usage: generate skeleton
+# Summary: Generate skeleton file for each programs
+# Help: Generate skeleton file for each programs
+
+set -eu
+cd $(dirname $0)/../
+carton exec libexec/generate-skeleton.pl $*

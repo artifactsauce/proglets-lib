@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Usage: batchrepos update [BATCHREPOS_WORKING_DIRECTORY]
+# Summary: Update all of the git repositories
+# Help:
+
+set -eu
+
+# Load libraries
+LIBDIR="$(realpath "$(dirname $0)/../lib/bash")"
+# shellcheck source=/lib/bash/functions
+. $LIBDIR/functions
+# shellcheck source=/lib/bash/logger
+. $LIBDIR/logger
+
+# Load configuration file
+: ${BATCHREPOS_RESOURCE_FILE:="$HOME/.batchreposrc"}
+if [ -f "$BATCHREPOS_RESOURCE_FILE" ]; then
+  logger.debug "Load configuration file"
+  # shellcheck source=$HOME/.batchreposrc
+  source $BATCHREPOS_RESOURCE_FILE
+fi
+
+# Set default values
+: ${BATCHREPOS_WORKING_DIRECTORY:="$(pwd)"}
+: ${BATCHREPOS_HTTP_PROXY:=""}
+
+# Get the path of working directory
+if [ $# -ge 1 ]; then
+  BATCHREPOS_WORKING_DIRECTORY=$1
+fi
+if [ ! -d "$BATCHREPOS_WORKING_DIRECTORY" ]; then
+  logger.error "Directory NOT exists: ${BATCHREPOS_WORKING_DIRECTORY}"
+  exit 1
+fi
+BATCHREPOS_WORKING_DIRECTORY=$(realpath $BATCHREPOS_WORKING_DIRECTORY)
+
+while read REPOSITORY; do
+  REPOSITORY=$(dirname $REPOSITORY)
+  logger.info "Repository: $REPOSITORY"
+  cd $REPOSITORY
+
+  if [ -n "$BATCHREPOS_HTTP_PROXY" ]; then
+    git config http.proxy "$BATCHREPOS_HTTP_PROXY"
+  fi
+
+  CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
+  git fetch --all --prune
+  git branch --track \
+    | sed -e 's/^[ \*]*//' \
+    | while read BRANCH
+  do
+    logger.debug "Branch: $BRANCH"
+    git checkout $BRANCH
+    if ! git merge remotes/origin/$BRANCH 2>/dev/null; then
+      logger.warn "Remote branch NOT exists: $BRANCH"
+      git branch --unset-upstream || true # Errorにしなくてよい
+    fi
+  done
+  git prune
+  git checkout $CURRENT_BRANCH
+
+  if [ -n "$BATCHREPOS_HTTP_PROXY" ]; then
+    git config --unset http.proxy "$BATCHREPOS_HTTP_PROXY"
+  fi
+done <<EOS
+$(find $BATCHREPOS_WORKING_DIRECTORY -name "vendor" -type d -prune -o -type d -name ".git" -print)
+EOS
+
+
+logger.info "Remained merged branches"
+diff -u <(git branch) <(git branch --merged) || true # 差分があった際に 1 で exit するため

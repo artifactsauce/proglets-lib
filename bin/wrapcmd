@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+set -eu
+
+: ${WRAPCMD_NOTIFICATION_TITLE:="Command execution notice"}
+: ${WRAPCMD_MAX_DISPLAY_LINES:=20}
+
+NOTIFICATION_CMD="$(realpath $(dirname $0)/pushbullet-pushes.pl)"
+# NOTIFICATION_CMD="/usr/local/bin/terminal-notifier"
+
+# 時刻の取得
+wrapcmd.get_datetime() {
+  gdate --iso-8601=seconds
+}
+
+wrapcmd.count_lines() {
+  local file_path="$1"
+  wc -l $file_path | awk '{print $1}'
+}
+
+wrapcmd.get_send_message() {
+  local file_path="$1"
+  if [ $(wrapcmd.count_lines $file_path) -ge $WRAPCMD_MAX_DISPLAY_LINES ]; then
+    head $file_path
+    echo -e "\n*snip*\n"
+    tail $file_path
+    echo "snip_long_output"> $FILE_FLG
+  else
+    cat $file_path
+  fi
+}
+
+# 終了通知送信
+wrapcmd.send_notice() {
+  local result="$1"
+  local file="$2"
+
+  # cat <<EOF | $NOTIFICATION_CMD -title "${WRAPCMD_NOTIFICATION_TITLE}: $result" -message -
+  cat <<EOF | $NOTIFICATION_CMD "${WRAPCMD_NOTIFICATION_TITLE}: $result"
+Command: $EXEC_CMD
+Start: $START_TIME
+End: $(wrapcmd.get_datetime)
+STDOUT: $FILE_OUT
+STDERR: $FILE_ERR
+
+$(wrapcmd.get_send_message $file)
+EOF
+}
+
+# 終了の捕捉
+wrapcmd.exit() {
+  local retval=$?
+  if [ $retval -eq 0 ]; then
+    wrapcmd.send_notice "Success" $FILE_OUT
+  else
+    wrapcmd.send_notice "Failed" $FILE_ERR
+  fi
+
+  if ! grep -q 'snip_long_output' $FILE_FLG; then
+    rm -f $FILE_OUT $FILE_ERR
+  fi
+  rm -f $FILE_FLG
+}
+
+FILE_OUT=$(mktemp "/tmp/wrapcmd.out.XXXXXX")
+FILE_ERR=$(mktemp "/tmp/wrapcmd.err.XXXXXX")
+FILE_FLG=$(mktemp "/tmp/wrapcmd.flg.XXXXXX")
+trap 'wrapcmd.exit' EXIT
+
+cat <<EOF
+STDOUT: tail -f $FILE_OUT
+STDERR: tail -f $FILE_ERR
+EOF
+START_TIME="$(wrapcmd.get_datetime)"
+EXEC_CMD="$*"
+$EXEC_CMD 1> $FILE_OUT 2> $FILE_ERR

@@ -1,0 +1,3 @@
+[submodule "share/mpkg"]
+	path = share/mpkg
+	url = https://github.com/artifactsauce/proglets-share-mpkg.git
