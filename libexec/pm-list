@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-# Usage: pm list
-# Summary: Show installed perl module list
-# Help: Show installed perl module list
-
-set -eu
-cd $(dirname $0)/../
-carton exec libexec/pm-list.pl $*

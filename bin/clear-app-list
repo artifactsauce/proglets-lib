@@ -1,6 +1,0 @@
-#!/bin/sh
-
-set -eu
-
-/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -kill -r -domain system -domain local -domain user
-killall Finder
