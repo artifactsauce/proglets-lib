@@ -6,6 +6,14 @@ array.contains () {
   return 1
 }
 
+uri_escape() {
+  if [ -p /dev/stdin ]; then
+    cat -
+  else
+    echo "$@"
+  fi | perl -MURI::Escape -e 'print uri_escape(join "", <>)'
+}
+
 date_lesseq() {
   local dt1, dt2
   dt1=$(date -d "$1" '+%s')
