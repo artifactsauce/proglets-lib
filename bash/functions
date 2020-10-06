@@ -30,6 +30,14 @@ date_lessthan() {
   return 1
 }
 
+datetime_iso() {
+  date --iso-8601=seconds
+}
+
+datetime_flat() {
+  date "+%Y%m%d%H%M%S"
+}
+
 err.trap() {
   local errcode=$?
   echo "error line $1: command exited with status $errcode."
